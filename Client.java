@@ -6,126 +6,9 @@ public class Client {
    static final String USER = System.getenv("JDBC_USER");
    static final String PASS = System.getenv("JDBC_PASS");
 
-   static void printAllData(Connection conn) {
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Musician LEFT JOIN Address ON Musician.address = Address.location");
-         System.out.println("\n\nMusicians Table");
-         System.out.println("SSN | Name | Address | Phone");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("ssn") + " | " + rs.getString("name") + " | " + rs.getString("address") + " | " + rs.getString("phoneNumber"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Address");
-         System.out.println("\n\nAddresses Table");
-         System.out.println("Address | Phone Number");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("location") + " | " + rs.getString("phonenumber"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Album");
-         System.out.println("\n\nAlbums Table");
-         System.out.println("ID | Format | Title | Identifier | Copyright Date");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getInt("id") + " | " + rs.getString("format") + " | " + rs.getString("title") + " | " + rs.getString("identifier") + " | " + rs.getDate("copyrightdate"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Song");
-         System.out.println("\n\nSongs Table");
-         System.out.println("Author | Title | Album ID");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("author") + " | " + rs.getString("title") + " | " + rs.getInt("albumid"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Performs");
-         System.out.println("\n\nPerformers Table");
-         System.out.println("Musician ID | Song ID");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("ssn") + " | " + rs.getString("author") + " - " + rs.getString("title"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Plays");
-         System.out.println("\n\nPlays Table");
-         System.out.println("Musician ID | Instrument ID");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("ssn") + " | " + rs.getInt("instrumentid"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         Statement stmt = conn.createStatement();
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Produces");
-         System.out.println("\n\nAlbum Producers Table");
-         System.out.println("Musician ID | Album ID");
-         while (rs.next()) {
-            // Retrieve by column name
-            System.out.println(rs.getString("ssn") + " | " + rs.getInt("albumid"));
-         }
-         stmt.close();
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      System.out.println("\n\n");
-   }
-
    public static void main(String[] args) {
       if (USER == null || DB_URL == null || PASS == null) {
          System.out.println("Login / Server info cannot be null!\nPlease setup System ENVIRONMENT variables");
-         return;
-      }
-
-      // Get drivers from the classpath when executing natively (cmd), or else it will error
-      try {
-         Class.forName("org.postgresql.Driver");
-      } catch (Exception e) {
-         e.printStackTrace();
          return;
       }
 
@@ -166,4 +49,112 @@ public class Client {
 
       scanner.close();
    }
+
+   // Method to print all data using existing jdbc connection
+   static void printAllData(Connection conn) {
+      Statement stmt = null;
+
+      try{
+         stmt = conn.createStatement();
+      } catch (Exception e){
+         e.printStackTrace();
+         System.out.println("Failed to create statement to print all tables.\n");
+         return;
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Musician LEFT JOIN Address ON Musician.address = Address.location");
+         System.out.println("\n\nMusicians Table");
+         System.out.println("SSN | Name | Address | Phone");
+         while (rs.next()) {
+            System.out.println(rs.getString("ssn") + " | " + rs.getString("name") + " | " + rs.getString("address") + " | " + rs.getString("phoneNumber"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Address");
+         System.out.println("\n\nAddresses Table");
+         System.out.println("Address | Phone Number");
+         while (rs.next()) {
+            System.out.println(rs.getString("location") + " | " + rs.getString("phonenumber"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Album");
+         System.out.println("\n\nAlbums Table");
+         System.out.println("ID | Format | Title | Identifier | Copyright Date");
+         while (rs.next()) {
+            System.out.println(rs.getInt("id") + " | " + rs.getString("format") + " | " + rs.getString("title") + " | " + rs.getString("identifier") + " | " + rs.getDate("copyrightdate"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Song");
+         System.out.println("\n\nSongs Table");
+         System.out.println("Author | Title | Album ID");
+         while (rs.next()) {
+            System.out.println(rs.getString("author") + " | " + rs.getString("title") + " | " + rs.getInt("albumid"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Performs");
+         System.out.println("\n\nPerformers Table");
+         System.out.println("Musician ID | Song ID");
+         while (rs.next()) {
+            System.out.println(rs.getString("ssn") + " | " + rs.getString("author") + " - " + rs.getString("title"));
+         }
+
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Plays");
+         System.out.println("\n\nPlays Table");
+         System.out.println("Musician ID | Instrument ID");
+         while (rs.next()) {
+            System.out.println(rs.getString("ssn") + " | " + rs.getInt("instrumentid"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT * FROM Produces");
+         System.out.println("\n\nAlbum Producers Table");
+         System.out.println("Musician ID | Album ID");
+         while (rs.next()) {
+            System.out.println(rs.getString("ssn") + " | " + rs.getInt("albumid"));
+         }
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      // Close statement that retreived all info
+      if(stmt != null){
+         try{
+            stmt.close();
+         }catch (Exception e) {}
+      }
+
+      System.out.println("\n\n");
+   }
+
 }
