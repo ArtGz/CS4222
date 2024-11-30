@@ -21,8 +21,17 @@ public class Client {
          
          while(action != 0){
             System.out.println("Enter action:\n1: Show all table info\n2: Add a musician\n3: Remove a musician\n4: Add an album\n5: Remove an album\n6: Add a song\n7: Remove a song\n0: Quit");
-            action = scanner.nextInt();
+            System.out.print(">> ");
+            try {
+               action = Integer.parseInt(scanner.nextLine());
+            } catch (NumberFormatException e) {
+               System.out.println("Enter an integer\n");
+               continue;
+            }
             switch(action){
+               case 2:
+                  insertMusician(scanner, conn);
+                  break;
                case 1:
                   printAllData(conn);
                   break;
@@ -157,4 +166,104 @@ public class Client {
       System.out.println("\n\n");
    }
 
+   public static boolean isValidSSN(String ssn, Connection conn) {
+      if(!ssn.matches("\\d{3}-\\d{2}-\\d{4}")) {
+         System.out.println("'" + ssn + "' is not a valid SSN\n");
+         return false;
+      }
+      if(isDuplicateKey(ssn, "musician","ssn", conn)) {
+         System.out.println("'" + ssn + "' is already in the database\n");
+         return false;
+      }
+      return true;
+   }
+
+   public static boolean isDuplicateKey(String key, String table, String attribute, Connection conn) {
+      String sql = "SELECT * FROM "+table+" WHERE "+attribute+" = ?";
+      try (PreparedStatement ps = conn.prepareStatement(sql)){
+         ps.setString(1, key);
+         return ps.executeQuery().isBeforeFirst();
+      } catch(SQLException e) {
+         e.printStackTrace();
+      }
+      return false;
+   }
+
+   public static String getInputOnAttribute(Scanner scanner, String prompt, String attribute, boolean required) {
+      while (true) {
+         System.out.print(prompt + (required ? "*" : "") + "\n>> ");
+         String input = scanner.nextLine().trim();
+         if (!input.isEmpty() || !required) return input;
+         System.out.println(attribute + " is a required field");
+      }
+   }
+
+   public static void insertMusician(Scanner scanner, Connection conn) {
+      System.out.println("Add a musician\nRequired field *");
+      // Collect validated inputs
+      String ssn = getInputOnAttribute(scanner, "Enter SSN (format: XXX-XX-XXXX)","SSN", true);
+      while (!isValidSSN(ssn, conn)) {
+         ssn = getInputOnAttribute(scanner, "Enter SSN (format: XXX-XX-XXXX)","SSN", true);
+      }
+
+      String name = getInputOnAttribute(scanner, "Enter name", "name", true);
+      String location = getInputOnAttribute(scanner, "Enter address","location",  true);
+      String phone = getInputOnAttribute(scanner, "Enter phone number", "phone number", true);
+
+      boolean locationExists = isDuplicateKey(location, "address", "location", conn);
+      boolean phoneNumberExists = isDuplicateKey(phone, "address", "phoneNumber", conn);
+      if(locationExists && !phoneNumberExists) {
+         System.out.println("The address already exists with a different phone number.\n");
+         return;
+      }
+      if(!locationExists && phoneNumberExists) {
+         System.out.println("The phone number already exists with a different address.\n");
+         return;
+      }
+      boolean addressExists = locationExists && phoneNumberExists;
+      try {
+         // Start the transaction
+         conn.setAutoCommit(false);
+         String sql;
+
+         // Insert new address if not found
+         if(!addressExists) {
+            sql = "INSERT INTO address (location, phoneNumber) VALUES (?, ?)";
+            try (PreparedStatement insertAddress = conn.prepareStatement(sql)) {
+               insertAddress.setString(1, location);
+               insertAddress.setString(2, phone);
+               insertAddress.execute();
+            }
+         }
+
+         // Insert musician
+         sql = "INSERT INTO musician (ssn, name, address) VALUES (?, ?, ?)";
+         try (PreparedStatement insertMusician = conn.prepareStatement(sql)) {
+            insertMusician.setString(1, ssn);
+            insertMusician.setString(2, name);
+            insertMusician.setString(3, location);
+            insertMusician.execute();
+         }
+
+         // Commit the transaction if everything succeeds
+         conn.commit();
+         conn.setAutoCommit(true);
+         System.out.println("Successfully inserted\n");
+      } catch (Exception e) {
+         try {
+            // Roll back the transaction if any exception occurs
+            conn.rollback();
+         } catch (SQLException rollbackEx) {
+            System.err.println("Rollback failed: " + rollbackEx.getMessage());
+            rollbackEx.printStackTrace();
+         }
+         e.printStackTrace();
+      } finally {
+         try {
+            conn.setAutoCommit(true);
+         } catch (SQLException autoCommitEx) {
+            System.err.println("Failed to reset auto-commit: " + autoCommitEx.getMessage());
+         }
+      }
+   }
 }
