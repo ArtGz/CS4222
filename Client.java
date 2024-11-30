@@ -29,6 +29,15 @@ public class Client {
                continue;
             }
             switch(action){
+               case 7:
+                  removeSong(scanner, conn);
+                  break;
+               case 5:
+                  removeAlbum(scanner, conn);
+                  break;
+               case 3:
+                  removeMusician(scanner, conn);
+                  break;
                case 2:
                   insertMusician(scanner, conn);
                   break;
@@ -166,12 +175,12 @@ public class Client {
       System.out.println("\n\n");
    }
 
-   public static boolean isValidSSN(String ssn, Connection conn) {
+   public static boolean isValidSSN(String ssn, Connection conn, Boolean checkForDuplicates) {
       if(!ssn.matches("\\d{3}-\\d{2}-\\d{4}")) {
          System.out.println("'" + ssn + "' is not a valid SSN\n");
          return false;
       }
-      if(isDuplicateKey(ssn, "musician","ssn", conn)) {
+      if(checkForDuplicates && isDuplicateKey(ssn, "musician","ssn", conn)) {
          System.out.println("'" + ssn + "' is already in the database\n");
          return false;
       }
@@ -202,7 +211,7 @@ public class Client {
       System.out.println("Add a musician\nRequired field *");
       // Collect validated inputs
       String ssn = getInputOnAttribute(scanner, "Enter SSN (format: XXX-XX-XXXX)","SSN", true);
-      while (!isValidSSN(ssn, conn)) {
+      while (!isValidSSN(ssn, conn, true)) {
          ssn = getInputOnAttribute(scanner, "Enter SSN (format: XXX-XX-XXXX)","SSN", true);
       }
 
@@ -264,6 +273,65 @@ public class Client {
          } catch (SQLException autoCommitEx) {
             System.err.println("Failed to reset auto-commit: " + autoCommitEx.getMessage());
          }
+      }
+   }
+
+   public static void removeMusician(Scanner scanner, Connection conn){
+      String queryString = "DELETE FROM musician WHERE ssn = ?";
+      String ssn = getInputOnAttribute(scanner, "Enter SSN to remove (format: XXX-XX-XXXX)","SSN", true);
+      while (!isValidSSN(ssn, conn, false)) {
+         ssn = getInputOnAttribute(scanner, "Invalid SSN, try again (format: XXX-XX-XXXX)","SSN", true);
+      }
+
+      try{
+         PreparedStatement deleteMusician = conn.prepareStatement(queryString);
+         deleteMusician.setString(1, ssn);
+         int deleted = deleteMusician.executeUpdate();
+         System.out.println("Successfully executed deletion: Deleted " + deleted + " row(s)\n");
+         deleteMusician.close();
+      } catch (Exception e){
+         System.out.println("Failed to delete musician.");
+      }
+   }
+
+   public static void removeSong(Scanner scanner, Connection conn){
+      String queryString = "DELETE FROM song WHERE author = ? AND title = ?";
+      String author = getInputOnAttribute(scanner, "Enter author of song","author", true);
+      String title = getInputOnAttribute(scanner, "Enter title of song","title", true);
+      try {
+         PreparedStatement deleteSong = conn.prepareStatement(queryString);
+         deleteSong.setString(1, author);
+         deleteSong.setString(2, title);
+         int deleted = deleteSong.executeUpdate();
+         System.out.println("Successfully executed deletion: Deleted " + deleted + " row(s)\n");
+         deleteSong.close();
+      } catch (Exception e){
+         e.printStackTrace();
+         System.out.println("Failed to delete song.\n");
+      }
+   }
+
+   public static void removeAlbum(Scanner scanner, Connection conn){
+      String queryString = "DELETE FROM album WHERE id = ?";
+      int id = -1;
+
+      while(id == -1){
+         try {
+            System.out.println("Enter an album id (integer)*\n>>");
+            id = Integer.parseInt(scanner.nextLine());
+         } catch (NumberFormatException e) {
+            System.out.println("Invalid integer");
+            continue;
+         }
+      }
+      try{
+         PreparedStatement deleteAlbum = conn.prepareStatement(queryString);
+            deleteAlbum.setInt(1, id);
+            int deleted = deleteAlbum.executeUpdate();
+            System.out.println("Successfully executed deletion: Deleted " + deleted + " row(s)\n");
+            deleteAlbum.close();
+      }catch (Exception e){
+         System.out.println("Failed to delete album.\n");
       }
    }
 }
