@@ -116,9 +116,9 @@ public class Client {
       try {
          ResultSet rs = stmt.executeQuery("SELECT * FROM Album");
          System.out.println("\n\nAlbums Table");
-         System.out.println("ID | Format | Title | Identifier | Copyright Date");
+         System.out.println("ID | Format | Title | Identifier | Copyright Date | Producer");
          while (rs.next()) {
-            System.out.println(rs.getInt("id") + " | " + rs.getString("format") + " | " + rs.getString("title") + " | " + rs.getString("identifier") + " | " + rs.getDate("copyrightdate"));
+            System.out.println(rs.getInt("id") + " | " + rs.getString("format") + " | " + rs.getString("title") + " | " + rs.getString("identifier") + " | " + rs.getDate("copyrightdate") + " | " + rs.getString("producer"));
          }
          rs.close();
       } catch (Exception e) {
@@ -156,18 +156,6 @@ public class Client {
          System.out.println("Musician ID | Instrument ID");
          while (rs.next()) {
             System.out.println(rs.getString("ssn") + " | " + rs.getInt("instrumentid"));
-         }
-         rs.close();
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      try {
-         ResultSet rs = stmt.executeQuery("SELECT * FROM Produces");
-         System.out.println("\n\nAlbum Producers Table");
-         System.out.println("Musician ID | Album ID");
-         while (rs.next()) {
-            System.out.println(rs.getString("ssn") + " | " + rs.getInt("albumid"));
          }
          rs.close();
       } catch (Exception e) {
@@ -418,18 +406,24 @@ public class Client {
       LocalDate localDate = LocalDate.parse(copyrightDateStr, formatter);
       Date copyrightDate = Date.valueOf(localDate);
 
+      String ssn = getInputOnAttribute(scanner, "Enter the producer's SSN (format: XXX-XX-XXXX)","SSN", true);
+      while (!isValidSSN(ssn, conn, false) || !isDuplicateKey(ssn, "musician", "ssn", conn)) {
+         ssn = getInputOnAttribute(scanner, "Invalid SSN or producer doesn't exist, try again (format: XXX-XX-XXXX)","SSN", true);
+      }
+
       System.out.println("An album requires at least one song.");
       String author = getInputOnAttribute(scanner, "Enter song author", "author", true);
       String songTitle = getInputOnAttribute(scanner, "Enter song title", "title", true);
 
       try {
-         String sql = "INSERT INTO Album (format, title, identifier, copyrightDate) VALUES (?, ?, ?, ?) RETURNING id";
+         String sql = "INSERT INTO Album (format, title, identifier, copyrightDate, producer) VALUES (?, ?, ?, ?, ?) RETURNING id";
          conn.setAutoCommit(false);
          PreparedStatement statement = conn.prepareStatement(sql);
          statement.setString(1, format);
          statement.setString(2, title);
          statement.setString(3, identifier);
          statement.setDate(4, copyrightDate);
+         statement.setString(5, ssn);
 
          ResultSet row = statement.executeQuery();
          int albumID = (row.next()) ? row.getInt("id") : 0;
