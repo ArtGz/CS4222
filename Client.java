@@ -427,7 +427,7 @@ public class Client {
 
          ResultSet row = statement.executeQuery();
          int albumID = (row.next()) ? row.getInt("id") : 0;
-         System.out.println(albumID);
+
          sql = "SELECT * FROM Song WHERE author = ? AND title = ?";
          statement = conn.prepareStatement(sql);
          statement.setString(1, author);
