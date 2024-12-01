@@ -162,6 +162,24 @@ public class Client {
          e.printStackTrace();
       }
 
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT cd_Album() as percentage");
+         rs.next();
+         System.out.println("\n\nPercent of CD Albums: " + rs.getDouble("percentage") + "%");
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
+      try {
+         ResultSet rs = stmt.executeQuery("SELECT total_songs() as total");
+         rs.next();
+         System.out.println("\n\nTotal number of songs in all albums: " + rs.getInt("total"));
+         rs.close();
+      } catch (Exception e) {
+         e.printStackTrace();
+      }
+
       // Close statement that retreived all info
       if(stmt != null){
          try{
