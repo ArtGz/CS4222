@@ -1,4 +1,7 @@
 import java.sql.*;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Scanner;
 
 public class Client {
@@ -32,12 +35,17 @@ public class Client {
                case 7:
                   removeSong(scanner, conn);
                   break;
+               case 6:
+                  insertSong(scanner, conn);
+                  break;
                case 5:
                   removeAlbum(scanner, conn);
                   break;
+               case 4:
+                  insertAlbum(scanner, conn);
+                  break;
                case 3:
                   removeMusician(scanner, conn);
-                  break;
                case 2:
                   insertMusician(scanner, conn);
                   break;
@@ -208,7 +216,7 @@ public class Client {
    }
 
    public static void insertMusician(Scanner scanner, Connection conn) {
-      System.out.println("Add a musician\nRequired field *");
+      System.out.println("\n\nAdd a musician\nRequired field *");
       // Collect validated inputs
       String ssn = getInputOnAttribute(scanner, "Enter SSN (format: XXX-XX-XXXX)","SSN", true);
       while (!isValidSSN(ssn, conn, true)) {
@@ -255,6 +263,7 @@ public class Client {
          }
 
          // Commit the transaction if everything succeeds
+
          conn.commit();
          conn.setAutoCommit(true);
          System.out.println("Successfully inserted\n");
@@ -311,27 +320,156 @@ public class Client {
       }
    }
 
-   public static void removeAlbum(Scanner scanner, Connection conn){
+   public static void removeAlbum(Scanner scanner, Connection conn) {
       String queryString = "DELETE FROM album WHERE id = ?";
       int id = -1;
 
-      while(id == -1){
+      while (id == -1) {
          try {
-            System.out.println("Enter an album id (integer)*\n>>");
+            System.out.print("Enter an album id (integer)*\n>> ");
             id = Integer.parseInt(scanner.nextLine());
          } catch (NumberFormatException e) {
             System.out.println("Invalid integer");
             continue;
          }
       }
-      try{
+      try {
          PreparedStatement deleteAlbum = conn.prepareStatement(queryString);
-            deleteAlbum.setInt(1, id);
-            int deleted = deleteAlbum.executeUpdate();
-            System.out.println("Successfully executed deletion: Deleted " + deleted + " row(s)\n");
-            deleteAlbum.close();
-      }catch (Exception e){
+         deleteAlbum.setInt(1, id);
+         int deleted = deleteAlbum.executeUpdate();
+         System.out.println("Successfully executed deletion: Deleted " + deleted + " row(s)\n");
+         deleteAlbum.close();
+      } catch (Exception e) {
          System.out.println("Failed to delete album.\n");
+      }
+   }
+   public static boolean isDuplicateSong(String author, String title, Connection conn) {
+      String sql = "SELECT * FROM song WHERE author = ? AND title = ?";
+      try(PreparedStatement statement = conn.prepareStatement(sql) ) {
+         statement.setString(1, author);
+         statement.setString(2, title);
+         return statement.executeQuery().isBeforeFirst();
+      } catch(SQLException e) {
+         e.printStackTrace();
+      }
+      return false;
+   }
+
+   public static void insertSong(Scanner scanner, Connection conn) {
+      System.out.println("\n\nAdd a song\nRequired field *");
+      String author = getInputOnAttribute(scanner, "Enter author", "author", true);
+      String title = getInputOnAttribute(scanner, "Enter title", "title", true);
+      if(isDuplicateSong(author, title, conn)) {
+         System.out.println("A song with that author and title already exists.\n");
+         return;
+      }
+
+      String albumIdString = getInputOnAttribute(scanner, "Enter album ID", "album ID", false);
+      while(!albumIdString.trim().isEmpty() && !albumIdString.matches("\\d+")) {
+         System.out.println("Album ID must be an integer");
+         albumIdString = getInputOnAttribute(scanner, "Enter album ID", "album ID", false);
+      }
+
+      int albumId = 0;
+      boolean isSingle = albumIdString.isEmpty();
+      if(!isSingle) albumId = Integer.parseInt(albumIdString);
+
+      String sql = "INSERT INTO song VALUES (?, ?"+(!isSingle ? ", ?" : "")+")";
+      try(PreparedStatement statement = conn.prepareStatement(sql)) {
+         statement.setString(1, author);
+         statement.setString(2, title);
+         if(!isSingle) statement.setInt(3, albumId);
+
+         statement.execute();
+         statement.close();
+         System.out.println("Successfully inserted\n");
+      } catch(SQLException e) {
+         e.printStackTrace();
+      }
+   }
+
+   public static boolean isValidDate(String dateString, String pattern) {
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern(pattern);
+      try {
+         LocalDate.parse(dateString, formatter);
+         return true; // If parsing succeeds, it's a valid date
+      } catch (DateTimeParseException e) {
+         return false; // Parsing failed, so it's invalid
+      }
+   }
+
+   public static void insertAlbum(Scanner scanner, Connection conn) {
+      System.out.println("\n\nAdd an album\nRequired field *");
+      String format = getInputOnAttribute(scanner, "Enter format", "format", true);
+      String title = getInputOnAttribute(scanner, "Enter title", "title", true);
+      String identifier = getInputOnAttribute(scanner, "Enter identifier", "identifier", true);
+      while(isDuplicateKey(identifier, "album", "identifier", conn)) {
+         System.out.println("'"+identifier+"' is already in the database.\n");
+         identifier = getInputOnAttribute(scanner, "Enter identifier", "identifier", true);
+      }
+
+      String copyrightDateStr =  getInputOnAttribute(scanner, "Enter copyright date (format:yyyy-mm-dd)", "copyright date", true);
+      while(!isValidDate(copyrightDateStr, "yyyy-MM-dd")) {
+         System.out.println("'" + copyrightDateStr + "' is not a valid date");
+         copyrightDateStr = getInputOnAttribute(scanner, "Enter copyright date (format:yyyy-mm-dd)", "copyright date", true);
+      }
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+      LocalDate localDate = LocalDate.parse(copyrightDateStr, formatter);
+      Date copyrightDate = Date.valueOf(localDate);
+
+      System.out.println("An album requires at least one song.");
+      String author = getInputOnAttribute(scanner, "Enter song author", "author", true);
+      String songTitle = getInputOnAttribute(scanner, "Enter song title", "title", true);
+
+      try {
+         String sql = "INSERT INTO Album (format, title, identifier, copyrightDate) VALUES (?, ?, ?, ?) RETURNING id";
+         conn.setAutoCommit(false);
+         PreparedStatement statement = conn.prepareStatement(sql);
+         statement.setString(1, format);
+         statement.setString(2, title);
+         statement.setString(3, identifier);
+         statement.setDate(4, copyrightDate);
+
+         ResultSet row = statement.executeQuery();
+         int albumID = (row.next()) ? row.getInt("id") : 0;
+         System.out.println(albumID);
+         sql = "SELECT * FROM Song WHERE author = ? AND title = ?";
+         statement = conn.prepareStatement(sql);
+         statement.setString(1, author);
+         statement.setString(2, songTitle);
+         if(statement.executeQuery().isBeforeFirst()) {
+            sql = "UPDATE Song SET albumID = ? WHERE author = ? and title = ?";
+            statement = conn.prepareStatement(sql);
+            statement.setInt(1, albumID);
+            statement.setString(2, author);
+            statement.setString(3, songTitle);
+            statement.executeUpdate();
+         } else {
+            sql = "INSERT INTO Song VALUES (?, ?, ?)";
+            statement = conn.prepareStatement(sql);
+            statement.setString(1, author);
+            statement.setString(2, songTitle);
+            statement.setInt(3, albumID);
+            statement.execute();
+         }
+         conn.commit();
+         conn.setAutoCommit(true);
+         System.out.println("Successfully Inserted");
+      } catch (Exception e) {
+         try {
+            // Roll back the transaction if any exception occurs
+            conn.rollback();
+         } catch (SQLException rollbackEx) {
+            System.err.println("Rollback failed: " + rollbackEx.getMessage());
+            rollbackEx.printStackTrace();
+         }
+         e.printStackTrace();
+      } finally {
+         try {
+            conn.setAutoCommit(true);
+         } catch (SQLException autoCommitEx) {
+            System.err.println("Failed to reset auto-commit: " + autoCommitEx.getMessage());
+         }
       }
    }
 }
