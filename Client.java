@@ -46,6 +46,7 @@ public class Client {
                   break;
                case 3:
                   removeMusician(scanner, conn);
+                  break;
                case 2:
                   insertMusician(scanner, conn);
                   break;
