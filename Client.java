@@ -391,7 +391,9 @@ public class Client {
          statement.close();
          System.out.println("Successfully inserted\n");
       } catch(SQLException e) {
-         e.printStackTrace();
+         String error = e.getMessage();
+         error = error.substring(0, error.indexOf("Where:")); // removing where message
+         System.out.println(error);
       }
    }
 
